@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package guser;
+
+
+import "google/protobuf/wrappers.proto";
+
+option go_package = "/guser";
+
+service UserService{
+    rpc AddUser(User) returns (google.protobuf.StringValue) ;
+    rpc DleteUser(google.protobuf.Int64Value) returns (google.protobuf.StringValue);
+    rpc AllUsers(Empty) returns (UsersList);
+}
+
+message User {
+    int64 num = 1;
+    string uid = 2;
+    string name = 3;
+    string passwd = 4;
+}
+
+message UsersList {
+    repeated User mas = 1;
+}
+
+message Empty {}
+
+

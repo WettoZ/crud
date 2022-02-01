@@ -1,0 +1,10 @@
+{
+    "GrpcHost":"localhost",
+    "GrpcPort":"50051",
+    "PgUser": "zaich",
+    "PgPasswd": "1346",
+    "PgHost": "localhost",
+    "PgPort": "5432",
+    "PgDB": "crud",
+    "CountConnect": 5
+}
