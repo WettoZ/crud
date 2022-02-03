@@ -1,14 +1,24 @@
-package main
+package postgresql
 
 import (
 	"context"
+	"crud/internal/config"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-func connection(countRepeat int) (*pgxpool.Pool, error) {
+type Connect interface {
+	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
+
+func NewConnection(countRepeat int, conf *config.Config) (*pgxpool.Pool, error) {
 	var db *pgxpool.Pool
 	var err error
 

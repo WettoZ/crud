@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-type setting struct {
+type Config struct {
 	GrpcHost     string `json:"GrpcHost"`
 	GrpcPort     string `json:"GrpcPort"`
 	PgUser       string `json:"PgUser"`
@@ -18,9 +18,8 @@ type setting struct {
 	CountConnect int    `json:"CountConnect"`
 }
 
-var conf setting
-
-func init() {
+func GetConfig() *Config {
+	var conf *Config
 	file, err := os.Open("setting.json")
 	if err != nil {
 		fmt.Println("Can't open file ", err)
@@ -36,4 +35,5 @@ func init() {
 		fmt.Println("Can't unmarshal file ", err)
 	}
 
+	return conf
 }

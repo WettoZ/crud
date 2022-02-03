@@ -3,38 +3,43 @@ package main
 import (
 	"context"
 	pb "crud/guser"
+	"crud/internal/config"
+	"crud/internal/pkg/client/postgresql"
+	"crud/internal/workdb"
+	wr "crud/internal/workdb/db"
 	"fmt"
 	"log"
 	"net"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"google.golang.org/grpc"
 )
 
 type server struct {
-	DB *pgxpool.Pool
 	pb.UnimplementedUserServiceServer
+	pg workdb.Ways
 }
 
 func (s *server) AddUser(ctx context.Context, in *pb.User) (*wrappers.StringValue, error) {
+	var wrk workdb.UserData
 	var err error
-	in.Uid = uuid.NewString()
-	in.Passwd, err = HashPassword(in.Passwd)
+	wrk.Name = in.Name
+	wrk.Uid = uuid.NewString()
+	wrk.Passwd, err = HashPassword(in.Passwd)
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	if err := InsertRow(ctx, s.DB, in); err != nil {
+	fmt.Println(wrk)
+	if err := s.pg.InsertRow(ctx, &wrk); err != nil {
 		return nil, err
 	}
 
-	return &wrappers.StringValue{Value: in.Uid}, nil
+	return &wrappers.StringValue{Value: wrk.Uid}, nil
 }
 
 func (s *server) DleteUser(ctx context.Context, in *wrappers.Int64Value) (*wrappers.StringValue, error) {
-	if err := DeleteRow(ctx, s.DB, in.Value); err != nil {
+	if err := s.pg.DeleteRow(ctx, in.Value); err != nil {
 		return nil, err
 	}
 
@@ -42,15 +47,21 @@ func (s *server) DleteUser(ctx context.Context, in *wrappers.Int64Value) (*wrapp
 }
 
 func (s *server) AllUsers(ctx context.Context, in *pb.Empty) (*pb.UsersList, error) {
-
-	list, err := AllRows(ctx, s.DB)
+	var ul = []*pb.User{}
+	list, err := s.pg.AllRows(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.UsersList{Mas: list}, nil
+
+	for _, l := range list {
+		ul = append(ul, &pb.User{Num: l.Num, Uid: l.Uid, Name: l.Name, Passwd: l.Passwd})
+	}
+
+	return &pb.UsersList{Mas: ul}, nil
 }
 
 func main() {
+	conf := config.GetConfig()
 	host := fmt.Sprintf("%s:%s", conf.GrpcHost, conf.GrpcPort)
 	l, err := net.Listen("tcp", host)
 	if err != nil {
@@ -59,12 +70,14 @@ func main() {
 
 	g := grpc.NewServer()
 
-	db, err := connection(conf.CountConnect)
+	db, err := postgresql.NewConnection(conf.CountConnect, conf)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pb.RegisterUserServiceServer(g, &server{DB: db})
+	newpool := wr.NewpoolPGX(db)
+
+	pb.RegisterUserServiceServer(g, &server{pg: newpool})
 
 	if err = g.Serve(l); err != nil {
 		fmt.Printf("[Error] gServe")
